@@ -141,6 +141,8 @@ select:focus,input:focus{border-color:var(--accent)}
 .pct-fill-prata{background:var(--silver)}
 .pct-fill-bronze{background:var(--bronze)}
 .class-info{font-size:11px;color:var(--muted);text-align:center;padding:10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:1rem}
+#pin-modal{display:none}
+#pin-modal.open{display:flex !important}
 </style>
 </head>
 <body>
@@ -292,6 +294,9 @@ select:focus,input:focus{border-color:var(--accent)}
         <div class="field" style="flex:1"><label>Nome</label>
           <input type="text" id="novo-nome" placeholder="Nome completo" style="width:100%">
         </div>
+        <div class="field"><label>PIN (4 dígitos)</label>
+          <input type="number" id="novo-pin" placeholder="0000" maxlength="4" style="width:90px">
+        </div>
         <button class="btn" onclick="addPlayer()">+ Adicionar</button>
       </div>
       <div id="player-err" class="err"></div>
@@ -299,6 +304,29 @@ select:focus,input:focus{border-color:var(--accent)}
     <div class="form-card">
       <div class="form-title">Jogadores Cadastrados</div>
       <div id="players-list"><div class="loading">Carregando...</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PIN -->
+<div id="pin-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:999;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;width:90%;max-width:340px;margin:auto">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;color:var(--accent);margin-bottom:6px">🔒 Confirmar Identidade</div>
+    <div id="pin-modal-desc" style="font-size:13px;color:var(--muted);margin-bottom:16px"></div>
+    <div style="display:flex;gap:8px;margin-bottom:8px">
+      <div style="flex:1">
+        <label style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.3px;display:block;margin-bottom:4px">Seu nome</label>
+        <select id="pin-player-sel" style="width:100%"></select>
+      </div>
+      <div>
+        <label style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.3px;display:block;margin-bottom:4px">PIN</label>
+        <input type="password" id="pin-input" maxlength="4" placeholder="••••" style="width:80px;text-align:center;font-size:20px;letter-spacing:4px">
+      </div>
+    </div>
+    <div id="pin-err" style="font-size:12px;color:#e05252;margin-bottom:10px;min-height:16px"></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn" style="flex:1" onclick="confirmarPin()">✓ Confirmar</button>
+      <button class="btn btn-danger" onclick="fecharPinModal()">Cancelar</button>
     </div>
   </div>
 </div>
@@ -324,7 +352,7 @@ try {
   else { app = initializeApp(firebaseConfig); db = getDatabase(app); }
 } catch(e) { firebaseEnabled = false; console.error(e); }
 
-let players = [], games = [], nextId = 1, syncing = false;
+let players = [], games = [], pins = {}, nextId = 1, syncing = false;
 
 // ==============================
 // DADOS
@@ -334,10 +362,11 @@ async function load() {
     if(firebaseEnabled) {
       const snap = await get(ref(db, 'torneio'));
       const data = snap.val();
-      if(data) { players = data.players||[]; games = data.games||[]; nextId = data.nextId||1; }
+      if(data) { players = data.players||[]; games = data.games||[]; pins = data.pins||{}; nextId = data.nextId||1; }
     } else {
       players = JSON.parse(localStorage.getItem('players')||'[]');
       games = JSON.parse(localStorage.getItem('games')||'[]');
+      pins = JSON.parse(localStorage.getItem('pins')||'{}');
       nextId = parseInt(localStorage.getItem('nextId')||'1');
     }
     if(!players.length) {
@@ -354,10 +383,11 @@ async function load() {
 
 async function save() {
   if(firebaseEnabled) {
-    await set(ref(db,'torneio'), { players, games, nextId, updatedAt: Date.now() });
+    await set(ref(db,'torneio'), { players, games, pins, nextId, updatedAt: Date.now() });
   } else {
     localStorage.setItem('players', JSON.stringify(players));
     localStorage.setItem('games', JSON.stringify(games));
+    localStorage.setItem('pins', JSON.stringify(pins));
     localStorage.setItem('nextId', String(nextId));
   }
 }
@@ -366,7 +396,7 @@ function enableRealtimeSync() {
   onValue(ref(db,'torneio'), snapshot => {
     const data = snapshot.val();
     if(!data) return;
-    players = data.players||[]; games = data.games||[]; nextId = data.nextId||1;
+    players = data.players||[]; games = data.games||[]; pins = data.pins||{}; nextId = data.nextId||1;
     renderAll();
     document.getElementById('last-sync').textContent = 'Atualizado em tempo real: ' + new Date().toLocaleTimeString('pt-BR');
   });
@@ -610,8 +640,13 @@ function renderJogos() {
 }
 
 window.irParaEditar = function(id) {
-  showTab('marcar');
-  setTimeout(() => { abrirFormPlacar(id); }, 150);
+  const g = games.find(x=>x.id===id);
+  if(!g) return;
+  abrirPinModal(
+    [g.home, g.away],
+    `Editar placar de ${g.home} vs ${g.away}. Confirme com o PIN de um dos jogadores.`,
+    () => { showTab('marcar'); setTimeout(() => abrirFormPlacar(id), 150); }
+  );
 };
 
 function renderMarcar() {
@@ -634,7 +669,7 @@ function renderMarcar() {
           <span style="font-weight:600;font-size:14px">${g.home} <span style="color:var(--muted);font-weight:400">vs</span> ${g.away}${g.date?' <span style="font-size:11px;color:var(--muted)">('+g.date+')</span>':''}</span>
           <div style="display:flex;gap:6px">
             <span class="badge badge-tipo">${tipoLabel(g.tipo||'simples')}</span>
-            <button class="btn" style="padding:6px 12px;font-size:12px" onclick="abrirFormPlacar(${g.id})">⚡ Lançar</button>
+            <button class="btn" style="padding:6px 12px;font-size:12px" onclick="lancarComPin(${g.id})">⚡ Lançar</button>
             <button class="btn btn-danger" onclick="removeGame(${g.id})">✕</button>
           </div>
         </div>
@@ -642,6 +677,16 @@ function renderMarcar() {
     </div>
   `;
 }
+
+window.lancarComPin = function(id) {
+  const g = games.find(x=>x.id===id);
+  if(!g) return;
+  abrirPinModal(
+    [g.home, g.away],
+    `Lançar resultado de ${g.home} vs ${g.away}. Confirme com o PIN de um dos jogadores.`,
+    () => abrirFormPlacar(id)
+  );
+};
 
 window.abrirFormPlacar = function(id) {
   const g = games.find(x=>x.id===id);
@@ -747,23 +792,36 @@ window.saveResult = async function() {
 // ==============================
 function renderPlayers() {
   const list = document.getElementById('players-list');
-  list.innerHTML = players.map((p,i) => `
-    <div class="player-row">
-      <span style="font-weight:600;font-size:14px">${p}</span>
-      <button class="btn btn-danger" onclick="removePlayer(${i})">✕ Remover</button>
-    </div>
-  `).join('');
+  list.innerHTML = players.map((p,i) => {
+    const temPin = pins[p] ? '🔒' : '⚠️ Sem PIN';
+    return `<div class="player-row">
+      <div>
+        <span style="font-weight:600;font-size:14px">${p}</span>
+        <span style="font-size:11px;color:var(--muted);margin-left:8px">${temPin}</span>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button class="btn" style="padding:5px 10px;font-size:11px;background:transparent;border:1px solid var(--border);color:var(--muted)" onclick="alterarPin('${p}')">🔑 PIN</button>
+        <button class="btn btn-danger" onclick="removePlayer(${i})">✕</button>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 window.addPlayer = async function() {
   document.getElementById('player-err').textContent = '';
   const nome = document.getElementById('novo-nome').value.trim();
+  const pinVal = document.getElementById('novo-pin').value.trim();
   if(!nome) { document.getElementById('player-err').textContent = 'Digite um nome.'; return; }
   if(players.map(p=>p.toLowerCase()).includes(nome.toLowerCase())) {
     document.getElementById('player-err').textContent = 'Jogador já cadastrado.'; return;
   }
+  if(!pinVal || pinVal.length < 4) {
+    document.getElementById('player-err').textContent = 'Digite um PIN de 4 dígitos.'; return;
+  }
   players.push(nome);
+  pins[nome] = pinVal;
   document.getElementById('novo-nome').value = '';
+  document.getElementById('novo-pin').value = '';
   await save();
 };
 
@@ -772,9 +830,62 @@ window.removePlayer = async function(i) {
   if(games.some(g=>(g.home===name||g.away===name)&&g.played)) {
     document.getElementById('player-err').textContent = 'Não é possível remover: jogador tem resultados lançados.'; return;
   }
+  delete pins[name];
   players.splice(i,1);
   games = games.filter(g=>g.home!==name&&g.away!==name);
   await save();
+};
+
+window.alterarPin = function(nome) {
+  const novo = prompt(`Novo PIN para ${nome} (4 dígitos):`);
+  if(!novo || novo.length !== 4 || isNaN(novo)) { alert('PIN inválido. Use exatamente 4 números.'); return; }
+  pins[nome] = novo;
+  save().then(() => renderPlayers());
+};
+
+// ==============================
+// SISTEMA DE PIN
+// ==============================
+let _pinCallback = null;
+let _pinJogadores = [];
+
+function abrirPinModal(jogadores, descricao, callback) {
+  _pinCallback = callback;
+  _pinJogadores = jogadores;
+  document.getElementById('pin-modal-desc').textContent = descricao;
+  document.getElementById('pin-err').textContent = '';
+  document.getElementById('pin-input').value = '';
+
+  const sel = document.getElementById('pin-player-sel');
+  sel.innerHTML = jogadores.map(j => `<option value="${j}">${j}</option>`).join('');
+
+  document.getElementById('pin-modal').classList.add('open');
+  setTimeout(() => document.getElementById('pin-input').focus(), 100);
+}
+
+window.fecharPinModal = function() {
+  document.getElementById('pin-modal').classList.remove('open');
+  _pinCallback = null;
+};
+
+window.confirmarPin = function() {
+  const jogador = document.getElementById('pin-player-sel').value;
+  const pinDigitado = document.getElementById('pin-input').value.trim();
+  const pinCorreto = pins[jogador];
+
+  if(!pinCorreto) {
+    document.getElementById('pin-err').textContent = `${jogador} não tem PIN cadastrado. Peça ao administrador para definir.`;
+    return;
+  }
+  if(pinDigitado !== String(pinCorreto)) {
+    document.getElementById('pin-err').textContent = 'PIN incorreto. Tente novamente.';
+    document.getElementById('pin-input').value = '';
+    document.getElementById('pin-input').focus();
+    return;
+  }
+
+  fecharPinModal();
+  if(_pinCallback) _pinCallback();
 };
 
 // ==============================
