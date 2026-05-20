@@ -4,12 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ranking MTC 2026</title>
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#3ecf6e">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="MTC 2026">
-<script>if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');</script>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -147,8 +141,6 @@ select:focus,input:focus{border-color:var(--accent)}
 .pct-fill-prata{background:var(--silver)}
 .pct-fill-bronze{background:var(--bronze)}
 .class-info{font-size:11px;color:var(--muted);text-align:center;padding:10px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:1rem}
-#pin-modal{display:none}
-#pin-modal.open{display:flex !important}
 </style>
 </head>
 <body>
@@ -167,7 +159,7 @@ select:focus,input:focus{border-color:var(--accent)}
   <div class="tabs">
     <button class="tab active" onclick="showTab('ranking')">🏆 Ranking</button>
     <button class="tab" onclick="showTab('jogos')">🎾 Jogos</button>
-    <button class="tab" onclick="showTab('marcar')">➕ Marcar Jogo</button>
+    <button class="tab" onclick="showTab('resultado')">✏️ Resultado</button>
     <button class="tab" onclick="showTab('classificacao')">🥇 Classificação</button>
     <button class="tab" onclick="showTab('jogadores')">👥 Jogadores</button>
   </div>
@@ -190,13 +182,8 @@ select:focus,input:focus{border-color:var(--accent)}
     </table>
   </div>
 
-  <!-- JOGOS (somente realizados + editar) -->
+  <!-- JOGOS -->
   <div id="tab-jogos" class="section">
-    <div id="games-list"><div class="loading">Carregando partidas...</div></div>
-  </div>
-
-  <!-- MARCAR JOGO (adicionar + lançar placar de pendentes) -->
-  <div id="tab-marcar" class="section">
     <div class="form-card">
       <div class="form-title">Adicionar Partida</div>
       <div class="form-row">
@@ -215,11 +202,20 @@ select:focus,input:focus{border-color:var(--accent)}
       </div>
       <div id="jogo-err" class="err"></div>
     </div>
+    <div id="games-list"><div class="loading">Carregando partidas...</div></div>
+  </div>
 
-    <!-- Partidas pendentes para lançar placar -->
-    <div id="pendentes-list"><div class="loading">Carregando...</div></div>
+  <!-- RESULTADO -->
+  <div id="tab-resultado" class="section">
+    <div class="form-card">
+      <div class="form-title">Selecionar Partida</div>
+      <div class="form-row">
+        <div class="field" style="flex:1"><label>Partida</label>
+          <select id="sel-game" onchange="selectGame()" style="width:100%"></select>
+        </div>
+      </div>
+    </div>
 
-    <!-- Formulário de placar (abre ao selecionar pendente) -->
     <div id="score-card" style="display:none">
       <div class="form-card">
         <div class="form-title" id="score-title"></div>
@@ -229,6 +225,8 @@ select:focus,input:focus{border-color:var(--accent)}
             <span class="rt-vs">vs</span>
             <span class="rt-name right" id="rt-away"></span>
           </div>
+
+          <!-- TIPO SIMPLES (original) -->
           <div id="score-simples">
             <div class="score-inputs">
               <input type="number" id="sc-home" min="0" max="99" value="0">
@@ -236,6 +234,8 @@ select:focus,input:focus{border-color:var(--accent)}
               <input type="number" id="sc-away" min="0" max="99" value="0">
             </div>
           </div>
+
+          <!-- TIPO 2 SETS -->
           <div id="score-2sets" style="display:none">
             <div class="sets-container">
               <div class="set-row">
@@ -252,6 +252,8 @@ select:focus,input:focus{border-color:var(--accent)}
               </div>
             </div>
           </div>
+
+          <!-- TIPO TIEBREAK (2 sets + super tie-break 10) -->
           <div id="score-tiebreak" style="display:none">
             <div class="sets-container">
               <div class="set-row">
@@ -278,9 +280,15 @@ select:focus,input:focus{border-color:var(--accent)}
             </p>
           </div>
         </div>
+
         <button class="btn" style="width:100%;margin-top:12px" onclick="saveResult()">✓ Salvar Resultado</button>
         <div id="res-msg"></div>
       </div>
+    </div>
+
+    <div class="form-card">
+      <div class="form-title">Resultados Lançados</div>
+      <div id="hist-list"><div class="loading">Carregando...</div></div>
     </div>
   </div>
 
@@ -300,9 +308,6 @@ select:focus,input:focus{border-color:var(--accent)}
         <div class="field" style="flex:1"><label>Nome</label>
           <input type="text" id="novo-nome" placeholder="Nome completo" style="width:100%">
         </div>
-        <div class="field"><label>PIN (4 dígitos)</label>
-          <input type="number" id="novo-pin" placeholder="0000" maxlength="4" style="width:90px">
-        </div>
         <button class="btn" onclick="addPlayer()">+ Adicionar</button>
       </div>
       <div id="player-err" class="err"></div>
@@ -310,29 +315,6 @@ select:focus,input:focus{border-color:var(--accent)}
     <div class="form-card">
       <div class="form-title">Jogadores Cadastrados</div>
       <div id="players-list"><div class="loading">Carregando...</div></div>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL PIN -->
-<div id="pin-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:999;align-items:center;justify-content:center">
-  <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:24px;width:90%;max-width:340px;margin:auto">
-    <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;color:var(--accent);margin-bottom:6px">🔒 Confirmar Identidade</div>
-    <div id="pin-modal-desc" style="font-size:13px;color:var(--muted);margin-bottom:16px"></div>
-    <div style="display:flex;gap:8px;margin-bottom:8px">
-      <div style="flex:1">
-        <label style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.3px;display:block;margin-bottom:4px">Seu nome</label>
-        <select id="pin-player-sel" style="width:100%"></select>
-      </div>
-      <div>
-        <label style="font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.3px;display:block;margin-bottom:4px">PIN</label>
-        <input type="password" id="pin-input" maxlength="4" placeholder="••••" style="width:80px;text-align:center;font-size:20px;letter-spacing:4px">
-      </div>
-    </div>
-    <div id="pin-err" style="font-size:12px;color:#e05252;margin-bottom:10px;min-height:16px"></div>
-    <div style="display:flex;gap:8px">
-      <button class="btn" style="flex:1" onclick="confirmarPin()">✓ Confirmar</button>
-      <button class="btn btn-danger" onclick="fecharPinModal()">Cancelar</button>
     </div>
   </div>
 </div>
@@ -358,7 +340,7 @@ try {
   else { app = initializeApp(firebaseConfig); db = getDatabase(app); }
 } catch(e) { firebaseEnabled = false; console.error(e); }
 
-let players = [], games = [], pins = {}, nextId = 1, syncing = false;
+let players = [], games = [], nextId = 1, syncing = false;
 
 // ==============================
 // DADOS
@@ -368,11 +350,10 @@ async function load() {
     if(firebaseEnabled) {
       const snap = await get(ref(db, 'torneio'));
       const data = snap.val();
-      if(data) { players = data.players||[]; games = data.games||[]; pins = data.pins||{}; nextId = data.nextId||1; }
+      if(data) { players = data.players||[]; games = data.games||[]; nextId = data.nextId||1; }
     } else {
       players = JSON.parse(localStorage.getItem('players')||'[]');
       games = JSON.parse(localStorage.getItem('games')||'[]');
-      pins = JSON.parse(localStorage.getItem('pins')||'{}');
       nextId = parseInt(localStorage.getItem('nextId')||'1');
     }
     if(!players.length) {
@@ -389,11 +370,10 @@ async function load() {
 
 async function save() {
   if(firebaseEnabled) {
-    await set(ref(db,'torneio'), { players, games, pins, nextId, updatedAt: Date.now() });
+    await set(ref(db,'torneio'), { players, games, nextId, updatedAt: Date.now() });
   } else {
     localStorage.setItem('players', JSON.stringify(players));
     localStorage.setItem('games', JSON.stringify(games));
-    localStorage.setItem('pins', JSON.stringify(pins));
     localStorage.setItem('nextId', String(nextId));
   }
 }
@@ -402,7 +382,7 @@ function enableRealtimeSync() {
   onValue(ref(db,'torneio'), snapshot => {
     const data = snapshot.val();
     if(!data) return;
-    players = data.players||[]; games = data.games||[]; pins = data.pins||{}; nextId = data.nextId||1;
+    players = data.players||[]; games = data.games||[]; nextId = data.nextId||1;
     renderAll();
     document.getElementById('last-sync').textContent = 'Atualizado em tempo real: ' + new Date().toLocaleTimeString('pt-BR');
   });
@@ -446,7 +426,7 @@ function renderAll() {
   if(active) {
     const id = active.id;
     if(id==='tab-jogos') renderJogos();
-    else if(id==='tab-marcar') renderMarcar();
+    else if(id==='tab-resultado') renderResultado();
     else if(id==='tab-jogadores') renderPlayers();
     else if(id==='tab-classificacao') renderClassificacao();
   }
@@ -589,119 +569,61 @@ function formatScore(g) {
 }
 
 function renderJogos() {
-  const list = document.getElementById('games-list');
-  const realizados = games.filter(g => g.played);
-  const pendentes = games.filter(g => !g.played);
-
-  let html = '';
-
-  if(pendentes.length) {
-    html += `<div style="font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:8px;padding:0 2px">⏳ Pendentes (${pendentes.length})</div>`;
-    html += pendentes.map(g => `
-      <div class="game-card">
-        <div class="game-teams">
-          <span class="team">${g.home}</span>
-          <span class="score pending">vs</span>
-          <span class="team away">${g.away}</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:wrap">
-          <span class="badge badge-tipo">${tipoLabel(g.tipo||'simples')}</span>
-          <span class="game-date">${g.date||''}</span>
-          <span class="badge badge-pend">Pendente</span>
-          <button class="btn btn-danger" onclick="removeGame(${g.id})">✕</button>
-        </div>
-      </div>
-    `).join('');
-  }
-
-  if(realizados.length) {
-    if(pendentes.length) html += `<div style="height:12px"></div>`;
-    html += `<div style="font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:8px;padding:0 2px">✅ Realizados (${realizados.length})</div>`;
-    html += realizados.slice().reverse().map(g => {
-      const hw = g.hg>g.ag, aw = g.ag>g.hg, draw = g.hg===g.ag;
-      return `<div class="game-card">
-        <div class="game-teams">
-          <span class="team">
-            ${g.home}
-            <span class="rb ${hw?'rb-v':draw?'rb-e':'rb-d'}" style="margin-left:4px">${hw?'V':draw?'E':'D'}</span>
-          </span>
-          <span class="score">${formatScore(g)}</span>
-          <span class="team away">
-            <span class="rb ${aw?'rb-v':draw?'rb-e':'rb-d'}" style="margin-right:4px">${aw?'V':draw?'E':'D'}</span>
-            ${g.away}
-          </span>
-        </div>
-        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:wrap">
-          <span class="badge badge-tipo">${tipoLabel(g.tipo||'simples')}</span>
-          <span class="game-date">${g.date||''}</span>
-          <button class="btn" style="padding:5px 10px;font-size:11px;background:transparent;border:1px solid var(--accent);color:var(--accent)" onclick="irParaEditar(${g.id})">✏️ Editar</button>
-          <button class="btn btn-danger" onclick="removeGame(${g.id})">✕</button>
-        </div>
-      </div>`;
-    }).join('');
-  }
-
-  if(!html) html = '<div class="empty">Nenhuma partida cadastrada ainda.</div>';
-  list.innerHTML = html;
-}
-
-window.irParaEditar = function(id) {
-  const g = games.find(x=>x.id===id);
-  if(!g) return;
-  abrirPinModal(
-    [g.home, g.away],
-    `Editar placar de ${g.home} vs ${g.away}. Confirme com o PIN de um dos jogadores.`,
-    () => { showTab('marcar'); setTimeout(() => abrirFormPlacar(id), 150); }
-  );
-};
-
-function renderMarcar() {
   populateSels();
-  const pendentes = games.filter(g => !g.played);
-  const list = document.getElementById('pendentes-list');
-  document.getElementById('score-card').style.display = 'none';
-  document.getElementById('res-msg').textContent = '';
-
-  if(!pendentes.length) {
-    list.innerHTML = '<div class="empty" style="margin-bottom:1rem">Nenhuma partida pendente. Adicione uma acima.</div>';
-    return;
-  }
-
-  list.innerHTML = `
-    <div class="form-card" style="margin-bottom:0">
-      <div class="form-title">Partidas Pendentes — Lançar Resultado</div>
-      ${pendentes.map(g => `
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);gap:8px;flex-wrap:wrap">
-          <span style="font-weight:600;font-size:14px">${g.home} <span style="color:var(--muted);font-weight:400">vs</span> ${g.away}${g.date?' <span style="font-size:11px;color:var(--muted)">('+g.date+')</span>':''}</span>
-          <div style="display:flex;gap:6px">
-            <span class="badge badge-tipo">${tipoLabel(g.tipo||'simples')}</span>
-            <button class="btn" style="padding:6px 12px;font-size:12px" onclick="lancarComPin(${g.id})">⚡ Lançar</button>
-            <button class="btn btn-danger" onclick="removeGame(${g.id})">✕</button>
-          </div>
-        </div>
-      `).join('')}
+  const list = document.getElementById('games-list');
+  if(!games.length) { list.innerHTML = '<div class="empty">Nenhuma partida cadastrada.</div>'; return; }
+  list.innerHTML = games.map(g => `
+    <div class="game-card">
+      <div class="game-teams">
+        <span class="team">${g.home}</span>
+        <span class="${g.played?'score':'score pending'}">${formatScore(g)}</span>
+        <span class="team away">${g.away}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;flex-wrap:wrap">
+        <span class="badge badge-tipo">${tipoLabel(g.tipo||'simples')}</span>
+        <span class="game-date">${g.date||''}</span>
+        <span class="badge ${g.played?'badge-done':'badge-pend'}">${g.played?'Realizada':'Pendente'}</span>
+        <button class="btn btn-danger" onclick="removeGame(${g.id})">✕</button>
+      </div>
     </div>
-  `;
+  `).join('');
 }
 
-window.lancarComPin = function(id) {
-  const g = games.find(x=>x.id===id);
-  if(!g) return;
-  abrirPinModal(
-    [g.home, g.away],
-    `Lançar resultado de ${g.home} vs ${g.away}. Confirme com o PIN de um dos jogadores.`,
-    () => abrirFormPlacar(id)
-  );
+window.addGame = async function() {
+  document.getElementById('jogo-err').textContent = '';
+  const h = document.getElementById('jogo-home').value;
+  const a = document.getElementById('jogo-away').value;
+  const d = document.getElementById('jogo-data').value.trim();
+  const tipo = document.getElementById('jogo-tipo').value;
+  if(h === a) { document.getElementById('jogo-err').textContent = 'Os dois jogadores devem ser diferentes.'; return; }
+  games.push({ id:nextId++, home:h, away:a, date:d, tipo, played:false, hg:0, ag:0, s1h:0,s1a:0,s2h:0,s2a:0,tbh:0,tba:0 });
+  await save();
 };
 
-window.abrirFormPlacar = function(id) {
-  const g = games.find(x=>x.id===id);
-  if(!g) return;
-  window._editandoId = id;
+window.removeGame = async function(id) {
+  games = games.filter(g=>g.id!==id);
+  await save();
+};
 
+// ==============================
+// RESULTADO
+// ==============================
+function renderResultado() {
+  const sel = document.getElementById('sel-game');
+  sel.innerHTML = '<option value="">-- Selecione uma partida --</option>' +
+    games.map(g=>`<option value="${g.id}">${g.home} vs ${g.away}${g.date?' ('+g.date+')':''}${g.played?' ✓':''}</option>`).join('');
+  renderHistorico();
+}
+
+window.selectGame = function() {
+  const id = parseInt(document.getElementById('sel-game').value);
   const card = document.getElementById('score-card');
+  if(!id) { card.style.display='none'; return; }
+  const g = games.find(x=>x.id===id);
+  if(!g) { card.style.display='none'; return; }
+
   card.style.display = 'block';
-  document.getElementById('score-title').textContent = g.home + ' × ' + g.away + (g.date?' — '+g.date:'');
+  document.getElementById('score-title').textContent = g.home+' × '+g.away+(g.date?' — '+g.date:'');
   document.getElementById('rt-home').textContent = g.home;
   document.getElementById('rt-away').textContent = g.away;
   document.getElementById('res-msg').textContent = '';
@@ -728,30 +650,10 @@ window.abrirFormPlacar = function(id) {
     document.getElementById('tb-home').value = g.played ? (g.tbh||0) : 0;
     document.getElementById('tb-away').value = g.played ? (g.tba||0) : 0;
   }
-
-  setTimeout(() => {
-    card.scrollIntoView({behavior:'smooth', block:'start'});
-  }, 100);
-};
-
-window.addGame = async function() {
-  document.getElementById('jogo-err').textContent = '';
-  const h = document.getElementById('jogo-home').value;
-  const a = document.getElementById('jogo-away').value;
-  const d = document.getElementById('jogo-data').value.trim();
-  const tipo = document.getElementById('jogo-tipo').value;
-  if(h === a) { document.getElementById('jogo-err').textContent = 'Os dois jogadores devem ser diferentes.'; return; }
-  games.push({ id:nextId++, home:h, away:a, date:d, tipo, played:false, hg:0, ag:0, s1h:0,s1a:0,s2h:0,s2a:0,tbh:0,tba:0 });
-  await save();
-};
-
-window.removeGame = async function(id) {
-  games = games.filter(g=>g.id!==id);
-  await save();
 };
 
 window.saveResult = async function() {
-  const id = window._editandoId;
+  const id = parseInt(document.getElementById('sel-game').value);
   const g = games.find(x=>x.id===id);
   if(!g) return;
 
@@ -762,15 +664,18 @@ window.saveResult = async function() {
     hg = Math.max(0, parseInt(document.getElementById('sc-home').value)||0);
     ag = Math.max(0, parseInt(document.getElementById('sc-away').value)||0);
     g.hg = hg; g.ag = ag;
+
   } else if(tipo === '2sets') {
     const s1h = Math.max(0, parseInt(document.getElementById('s1-home').value)||0);
     const s1a = Math.max(0, parseInt(document.getElementById('s1-away').value)||0);
     const s2h = Math.max(0, parseInt(document.getElementById('s2-home').value)||0);
     const s2a = Math.max(0, parseInt(document.getElementById('s2-away').value)||0);
     g.s1h=s1h; g.s1a=s1a; g.s2h=s2h; g.s2a=s2a;
+    // Conta sets ganhos como "gols"
     hg = (s1h>s1a?1:0) + (s2h>s2a?1:0);
     ag = (s1a>s1h?1:0) + (s2a>s2h?1:0);
     g.hg = hg; g.ag = ag;
+
   } else if(tipo === 'tiebreak') {
     const s1h = Math.max(0, parseInt(document.getElementById('t1-home').value)||0);
     const s1a = Math.max(0, parseInt(document.getElementById('t1-away').value)||0);
@@ -779,8 +684,10 @@ window.saveResult = async function() {
     const tbh = Math.max(0, parseInt(document.getElementById('tb-home').value)||0);
     const tba = Math.max(0, parseInt(document.getElementById('tb-away').value)||0);
     g.s1h=s1h; g.s1a=s1a; g.s2h=s2h; g.s2a=s2a; g.tbh=tbh; g.tba=tba;
-    hg = (s1h>s1a?1:0) + (s2h>s2a?1:0) + (tbh>tba?1:0);
-    ag = (s1a>s1h?1:0) + (s2a>s2h?1:0) + (tba>tbh?1:0);
+    // Sets ganhos: 2 regulares + tiebreak
+    const hSets = (s1h>s1a?1:0) + (s2h>s2a?1:0) + (tbh>tba?1:0);
+    const aSets = (s1a>s1h?1:0) + (s2a>s2h?1:0) + (tba>tbh?1:0);
+    hg = hSets; ag = aSets;
     g.hg = hg; g.ag = ag;
   }
 
@@ -788,46 +695,52 @@ window.saveResult = async function() {
   await save();
   const msg = document.getElementById('res-msg');
   msg.className = 'ok';
-  msg.textContent = '✓ Resultado salvo!';
-  document.getElementById('score-card').style.display = 'none';
-  window._editandoId = null;
+  msg.textContent = '✓ Resultado salvo e sincronizado para todos os celulares.';
 };
+
+function renderHistorico() {
+  const hist = document.getElementById('hist-list');
+  const played = games.filter(g=>g.played);
+  if(!played.length) { hist.innerHTML = '<div class="empty">Nenhum resultado lançado ainda.</div>'; return; }
+  hist.innerHTML = played.slice().reverse().map(g => {
+    const hw = g.hg>g.ag, aw = g.ag>g.hg, draw = g.hg===g.ag;
+    const scoreStr = formatScore(g);
+    return `<div class="hist-item">
+      <div class="hist-teams">
+        <span class="ht">${g.home} <span class="rb ${hw?'rb-v':draw?'rb-e':'rb-d'}">${hw?'V':draw?'E':'D'}</span></span>
+        <span class="hs">${scoreStr}</span>
+        <span class="ht right"><span class="rb ${aw?'rb-v':draw?'rb-e':'rb-d'}">${aw?'V':draw?'E':'D'}</span> ${g.away}</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span class="badge badge-tipo">${tipoLabel(g.tipo||'simples')}</span>
+        <span style="font-size:11px;color:var(--muted)">${g.date||''}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
 
 // ==============================
 // JOGADORES
 // ==============================
 function renderPlayers() {
   const list = document.getElementById('players-list');
-  list.innerHTML = players.map((p,i) => {
-    const temPin = pins[p] ? '🔒' : '⚠️ Sem PIN';
-    return `<div class="player-row">
-      <div>
-        <span style="font-weight:600;font-size:14px">${p}</span>
-        <span style="font-size:11px;color:var(--muted);margin-left:8px">${temPin}</span>
-      </div>
-      <div style="display:flex;gap:6px;align-items:center">
-        <button class="btn" style="padding:5px 10px;font-size:11px;background:transparent;border:1px solid var(--border);color:var(--muted)" onclick="alterarPin('${p}')">🔑 PIN</button>
-        <button class="btn btn-danger" onclick="removePlayer(${i})">✕</button>
-      </div>
-    </div>`;
-  }).join('');
+  list.innerHTML = players.map((p,i) => `
+    <div class="player-row">
+      <span style="font-weight:600;font-size:14px">${p}</span>
+      <button class="btn btn-danger" onclick="removePlayer(${i})">✕ Remover</button>
+    </div>
+  `).join('');
 }
 
 window.addPlayer = async function() {
   document.getElementById('player-err').textContent = '';
   const nome = document.getElementById('novo-nome').value.trim();
-  const pinVal = document.getElementById('novo-pin').value.trim();
   if(!nome) { document.getElementById('player-err').textContent = 'Digite um nome.'; return; }
   if(players.map(p=>p.toLowerCase()).includes(nome.toLowerCase())) {
     document.getElementById('player-err').textContent = 'Jogador já cadastrado.'; return;
   }
-  if(!pinVal || pinVal.length < 4) {
-    document.getElementById('player-err').textContent = 'Digite um PIN de 4 dígitos.'; return;
-  }
   players.push(nome);
-  pins[nome] = pinVal;
   document.getElementById('novo-nome').value = '';
-  document.getElementById('novo-pin').value = '';
   await save();
 };
 
@@ -836,62 +749,9 @@ window.removePlayer = async function(i) {
   if(games.some(g=>(g.home===name||g.away===name)&&g.played)) {
     document.getElementById('player-err').textContent = 'Não é possível remover: jogador tem resultados lançados.'; return;
   }
-  delete pins[name];
   players.splice(i,1);
   games = games.filter(g=>g.home!==name&&g.away!==name);
   await save();
-};
-
-window.alterarPin = function(nome) {
-  const novo = prompt(`Novo PIN para ${nome} (4 dígitos):`);
-  if(!novo || novo.length !== 4 || isNaN(novo)) { alert('PIN inválido. Use exatamente 4 números.'); return; }
-  pins[nome] = novo;
-  save().then(() => renderPlayers());
-};
-
-// ==============================
-// SISTEMA DE PIN
-// ==============================
-let _pinCallback = null;
-let _pinJogadores = [];
-
-function abrirPinModal(jogadores, descricao, callback) {
-  _pinCallback = callback;
-  _pinJogadores = jogadores;
-  document.getElementById('pin-modal-desc').textContent = descricao;
-  document.getElementById('pin-err').textContent = '';
-  document.getElementById('pin-input').value = '';
-
-  const sel = document.getElementById('pin-player-sel');
-  sel.innerHTML = jogadores.map(j => `<option value="${j}">${j}</option>`).join('');
-
-  document.getElementById('pin-modal').classList.add('open');
-  setTimeout(() => document.getElementById('pin-input').focus(), 100);
-}
-
-window.fecharPinModal = function() {
-  document.getElementById('pin-modal').classList.remove('open');
-  _pinCallback = null;
-};
-
-window.confirmarPin = function() {
-  const jogador = document.getElementById('pin-player-sel').value;
-  const pinDigitado = document.getElementById('pin-input').value.trim();
-  const pinCorreto = pins[jogador];
-
-  if(!pinCorreto) {
-    document.getElementById('pin-err').textContent = `${jogador} não tem PIN cadastrado. Peça ao administrador para definir.`;
-    return;
-  }
-  if(pinDigitado !== String(pinCorreto)) {
-    document.getElementById('pin-err').textContent = 'PIN incorreto. Tente novamente.';
-    document.getElementById('pin-input').value = '';
-    document.getElementById('pin-input').focus();
-    return;
-  }
-
-  fecharPinModal();
-  if(_pinCallback) _pinCallback();
 };
 
 // ==============================
@@ -901,12 +761,12 @@ window.showTab = function(t) {
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(s=>s.classList.remove('active'));
   document.getElementById('tab-'+t).classList.add('active');
-  const tabs = ['ranking','jogos','marcar','classificacao','jogadores'];
+  const tabs = ['ranking','jogos','resultado','classificacao','jogadores'];
   const idx = tabs.indexOf(t);
   document.querySelectorAll('.tab')[idx].classList.add('active');
   if(t==='ranking') renderRanking();
   if(t==='jogos') renderJogos();
-  if(t==='marcar') renderMarcar();
+  if(t==='resultado') renderResultado();
   if(t==='classificacao') renderClassificacao();
   if(t==='jogadores') renderPlayers();
 };
