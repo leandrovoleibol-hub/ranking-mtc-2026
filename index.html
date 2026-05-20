@@ -610,28 +610,8 @@ window.removeGame = async function(id) {
 // ==============================
 function renderResultado() {
   const sel = document.getElementById('sel-game');
-  const pendentes = games.filter(g => !g.played);
-  const finalizadas = games.filter(g => g.played);
-
-  let html = '<option value="">-- Selecione uma partida --</option>';
-
-  if(pendentes.length) {
-    html += `<optgroup label="⏳ Pendentes (${pendentes.length})">`;
-    html += pendentes.map(g =>
-      `<option value="${g.id}">${g.home} vs ${g.away}${g.date?' ('+g.date+')':''}</option>`
-    ).join('');
-    html += '</optgroup>';
-  }
-
-  if(finalizadas.length) {
-    html += `<optgroup label="✓ Finalizadas (${finalizadas.length}) — editar resultado">`;
-    html += finalizadas.map(g =>
-      `<option value="${g.id}" style="color:#7a9982">${g.home} vs ${g.away}${g.date?' ('+g.date+')':''} ✓</option>`
-    ).join('');
-    html += '</optgroup>';
-  }
-
-  sel.innerHTML = html;
+  sel.innerHTML = '<option value="">-- Selecione uma partida --</option>' +
+    games.map(g=>`<option value="${g.id}">${g.home} vs ${g.away}${g.date?' ('+g.date+')':''}${g.played?' ✓':''}</option>`).join('');
   renderHistorico();
 }
 
