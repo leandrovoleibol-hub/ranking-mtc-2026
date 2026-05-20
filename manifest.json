@@ -1,0 +1,26 @@
+{
+  "name": "Ranking MTC 2026",
+  "short_name": "MTC 2026",
+  "description": "Sistema de ranking do torneio de tênis MTC 2026",
+  "start_url": "/ranking-mtc-2026/",
+  "scope": "/ranking-mtc-2026/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0d1a12",
+  "theme_color": "#3ecf6e",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
