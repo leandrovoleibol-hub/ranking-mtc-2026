@@ -1,0 +1,753 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --green:#1a7a3c;--green-light:#e8f5ee;--green-mid:#2d9e52;
+  --gold:#c9920a;--gold-light:#fdf3dc;
+  --silver:#7a8390;--bronze:#a0521a;
+  --bg:#0d1a12;--surface:#152018;--surface2:#1e2e22;--border:#2a3e2f;
+  --text:#f0f4f1;--muted:#7a9982;--accent:#3ecf6e;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Barlow',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.app{max-width:720px;margin:0 auto;padding:0 0 3rem}
+
+.header{padding:1.5rem 1.5rem 1rem;border-bottom:1px solid var(--border)}
+.header-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.logo{font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:800;letter-spacing:1px;color:var(--accent);line-height:1.1}
+.logo span{color:var(--muted);font-weight:600;font-size:13px;display:block;letter-spacing:2px;text-transform:uppercase}
+.sync-btn{padding:6px 14px;background:transparent;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:12px;cursor:pointer;font-family:'Barlow',sans-serif;transition:all .2s}
+.sync-btn:hover{border-color:var(--accent);color:var(--accent)}
+.last-sync{font-size:11px;color:var(--muted);margin-top:6px}
+
+.tabs{display:flex;border-bottom:1px solid var(--border);padding:0 1.5rem}
+.tab{padding:12px 16px;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;margin-bottom:-1px;font-family:'Barlow',sans-serif;letter-spacing:.3px;transition:all .2s}
+.tab.active,.tab:hover{color:var(--accent)}
+.tab.active{border-bottom-color:var(--accent)}
+.section{display:none;padding:1.5rem}.section.active{display:block}
+
+.rank-table{width:100%;border-collapse:collapse}
+.rank-table th{font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:600;letter-spacing:1px;color:var(--muted);padding:8px 10px;text-align:center;border-bottom:1px solid var(--border);text-transform:uppercase}
+.rank-table th:nth-child(2){text-align:left}
+.rank-table td{padding:10px 10px;text-align:center;border-bottom:1px solid #1a2a1e;font-size:14px;transition:background .15s}
+.rank-table td:nth-child(2){text-align:left;font-weight:600;font-size:15px}
+.rank-table tr:hover td{background:var(--surface2)}
+.pos-cell{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;width:36px}
+.p1{color:var(--gold)}.p2{color:var(--silver)}.p3{color:var(--bronze)}
+.pts-cell{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:800;color:var(--accent)}
+.sg-pos{color:#3ecf6e}.sg-neg{color:#e05252}.sg-zero{color:var(--muted)}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.5rem}
+.metric{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center}
+.metric .val{font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:800;color:var(--accent)}
+.metric .lbl{font-size:11px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px}
+
+.game-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.game-teams{display:flex;align-items:center;gap:10px;flex:1;min-width:200px}
+.team{font-weight:600;font-size:14px;flex:1}
+.team.away{text-align:right}
+.score{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:800;color:var(--accent);min-width:56px;text-align:center}
+.score.pending{font-size:14px;color:var(--muted);font-family:'Barlow',sans-serif;font-weight:400}
+.badge{display:inline-block;padding:3px 8px;border-radius:4px;font-size:10px;font-weight:600;letter-spacing:.5px;text-transform:uppercase}
+.badge-done{background:#1a3d22;color:#3ecf6e}
+.badge-pend{background:#1e2510;color:#8aaa30}
+.game-date{font-size:11px;color:var(--muted)}
+
+.form-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:1rem}
+.form-title{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:600;letter-spacing:.5px;color:var(--muted);text-transform:uppercase;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.form-row{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.3px;text-transform:uppercase}
+select,input[type=text],input[type=number]{padding:8px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:13px;font-family:'Barlow',sans-serif;min-width:100px;outline:none;transition:border-color .2s}
+select:focus,input:focus{border-color:var(--accent)}
+.btn{padding:8px 16px;background:var(--accent);border:none;border-radius:6px;color:#0d1a12;font-weight:700;font-size:13px;cursor:pointer;font-family:'Barlow',sans-serif;letter-spacing:.3px;transition:all .2s}
+.btn:hover{background:#5ad87c}
+.btn-danger{background:transparent;border:1px solid #3d1a1a;color:#e05252;padding:6px 10px;font-size:12px}
+.btn-danger:hover{background:#1a0a0a;border-color:#e05252}
+.err{font-size:12px;color:#e05252;margin-top:6px}
+.ok{font-size:12px;color:var(--accent);margin-top:6px}
+
+.result-match{background:var(--surface2);border-radius:8px;padding:14px;margin-bottom:12px}
+.result-teams{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.rt-name{flex:1;font-weight:600;font-size:15px}
+.rt-name.right{text-align:right}
+.rt-vs{font-size:12px;color:var(--muted)}
+.score-inputs{display:flex;align-items:center;gap:10px;justify-content:center}
+.score-inputs input{width:60px;text-align:center;font-size:22px;font-weight:700;font-family:'Barlow Condensed',sans-serif}
+.score-x{font-size:18px;color:var(--muted)}
+
+.player-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)}
+.player-row:last-child{border-bottom:none}
+.empty{color:var(--muted);font-size:13px;text-align:center;padding:2rem 0}
+.loading{color:var(--muted);font-size:13px;text-align:center;padding:1rem}
+
+.hist-item{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #1a2a1e;gap:8px;flex-wrap:wrap}
+.hist-item:last-child{border-bottom:none}
+.hist-teams{display:flex;align-items:center;gap:8px;flex:1}
+.ht{font-size:13px;font-weight:600;min-width:80px}
+.ht.right{text-align:right}
+.hs{font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;color:var(--accent);min-width:44px;text-align:center}
+.rb{font-size:10px;font-weight:700;padding:2px 6px;border-radius:3px;text-transform:uppercase;letter-spacing:.3px}
+.rb-v{background:#1a3d22;color:#3ecf6e}
+.rb-d{background:#3d1a1a;color:#e05252}
+.rb-e{background:#2a2a15;color:#c9b840}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="header-top">
+      <div class="logo">
+        RANKING 2026 MTC
+        <span>Torneio de Tênis</span>
+      </div>
+      <button class="sync-btn" onclick="syncAll()">⟳ Atualizar</button>
+    </div>
+    <div class="last-sync" id="last-sync">Carregando dados...</div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('ranking')">🏆 Ranking</button>
+    <button class="tab" onclick="showTab('jogos')">🎾 Jogos</button>
+    <button class="tab" onclick="showTab('resultado')">✏️ Resultado</button>
+    <button class="tab" onclick="showTab('jogadores')">👥 Jogadores</button>
+  </div>
+
+  <div id="tab-ranking" class="section active">
+    <div class="metrics">
+      <div class="metric"><div class="val" id="m-players">—</div><div class="lbl">Jogadores</div></div>
+      <div class="metric"><div class="val" id="m-games">—</div><div class="lbl">Partidas</div></div>
+      <div class="metric"><div class="val" id="m-done">—</div><div class="lbl">Realizadas</div></div>
+      <div class="metric"><div class="val" id="m-goals">—</div><div class="lbl">Sets</div></div>
+    </div>
+    <table class="rank-table">
+      <thead><tr>
+        <th>#</th><th style="text-align:left">Jogador</th>
+        <th>J</th><th>V</th><th>E</th><th>D</th>
+        <th>GP</th><th>GC</th><th>SG</th><th>Pts</th>
+      </tr></thead>
+      <tbody id="ranking-body"><tr><td colspan="10" class="loading">Carregando...</td></tr></tbody>
+    </table>
+  </div>
+
+  <div id="tab-jogos" class="section">
+    <div class="form-card">
+      <div class="form-title">Adicionar Partida</div>
+      <div class="form-row">
+        <div class="field"><label>Jogador 1</label><select id="jogo-home"></select></div>
+        <div class="field"><label>Jogador 2</label><select id="jogo-away"></select></div>
+        <div class="field"><label>Data</label><input type="text" id="jogo-data" placeholder="dd/mm" style="width:80px"></div>
+        <button class="btn" onclick="addGame()">+ Adicionar</button>
+      </div>
+      <div id="jogo-err" class="err"></div>
+    </div>
+    <div id="games-list"><div class="loading">Carregando partidas...</div></div>
+  </div>
+
+  <div id="tab-resultado" class="section">
+    <div class="form-card">
+      <div class="form-title">Selecionar Partida</div>
+      <div class="form-row">
+        <div class="field" style="flex:1"><label>Partida</label>
+          <select id="sel-game" onchange="selectGame()" style="width:100%"></select>
+        </div>
+      </div>
+    </div>
+    <div id="score-card" style="display:none">
+      <div class="form-card">
+        <div class="form-title" id="score-title"></div>
+        <div class="result-match">
+          <div class="result-teams">
+            <span class="rt-name" id="rt-home"></span>
+            <span class="rt-vs">vs</span>
+            <span class="rt-name right" id="rt-away"></span>
+          </div>
+          <div class="score-inputs">
+            <input type="number" id="sc-home" min="0" max="99" value="0">
+            <span class="score-x">×</span>
+            <input type="number" id="sc-away" min="0" max="99" value="0">
+          </div>
+        </div>
+        <button class="btn" style="width:100%;margin-top:4px" onclick="saveResult()">✓ Salvar Resultado</button>
+        <div id="res-msg"></div>
+      </div>
+    </div>
+    <div class="form-card">
+      <div class="form-title">Resultados Lançados</div>
+      <div id="hist-list"><div class="loading">Carregando...</div></div>
+    </div>
+  </div>
+
+  <div id="tab-jogadores" class="section">
+    <div class="form-card">
+      <div class="form-title">Adicionar Jogador</div>
+      <div class="form-row">
+        <div class="field" style="flex:1"><label>Nome</label>
+          <input type="text" id="novo-nome" placeholder="Nome completo" style="width:100%">
+        </div>
+        <button class="btn" onclick="addPlayer()">+ Adicionar</button>
+      </div>
+      <div id="player-err" class="err"></div>
+    </div>
+    <div class="form-card">
+      <div class="form-title">Jogadores Cadastrados</div>
+      <div id="players-list"><div class="loading">Carregando...</div></div>
+    </div>
+  </div>
+</div>
+
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getDatabase,
+  ref,
+  set,
+  get,
+  onValue
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+/*
+==========================================
+CONFIGURAÇÃO FIREBASE
+==========================================
+1. Criar conta gratuita em:
+https://firebase.google.com/
+
+2. Criar projeto e ativar:
+Realtime Database
+
+3. Trocar os dados abaixo pelos seus.
+*/
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAp1rksUvXM_7HaJcXClYupYDG4PJTqcSo",
+  authDomain: "ranking-mtc-2026.firebaseapp.com",
+  databaseURL: "https://ranking-mtc-2026-default-rtdb.firebaseio.com",
+  projectId: "ranking-mtc-2026",
+  storageBucket: "ranking-mtc-2026.firebasestorage.app",
+  messagingSenderId: "302857755037",
+  appId: "1:302857755037:web:73d69bc433a363bd72f774",
+  measurementId: "G-GF67P50ECX"
+};
+
+
+let app = null;
+let db = null;
+let firebaseEnabled = true;
+
+try{
+  if(firebaseConfig.apiKey === "SUA_API_KEY"){
+    firebaseEnabled = false;
+  }else{
+    app = initializeApp(firebaseConfig);
+    db = getDatabase(app);
+  }
+}catch(e){
+  firebaseEnabled = false;
+  console.error(e);
+}
+
+let players = [];
+let games = [];
+let nextId = 1;
+let syncing = false;
+
+async function load(){
+  try{
+
+    if(firebaseEnabled){
+      const snap = await get(ref(db, 'torneio'));
+      const data = snap.val();
+
+      if(data){
+        players = data.players || [];
+        games = data.games || [];
+        nextId = data.nextId || 1;
+      }
+    }else{
+      const localPlayers = localStorage.getItem('players');
+      const localGames = localStorage.getItem('games');
+      const localNextId = localStorage.getItem('nextId');
+
+      players = localPlayers ? JSON.parse(localPlayers) : [];
+      games = localGames ? JSON.parse(localGames) : [];
+      nextId = localNextId ? parseInt(localNextId) : 1;
+    }
+
+    if(!players.length){
+      players = [
+        "Leandro",
+        "Bruno",
+        "Danilo",
+        "Hugo",
+        "Jaime",
+        "Leonardo Lira",
+        "Murilo Du Couro"
+      ];
+      await save();
+    }
+
+    renderAll();
+
+    document.getElementById('last-sync').textContent =
+      'Sincronizado: ' + new Date().toLocaleTimeString('pt-BR');
+
+  }catch(e){
+    console.error(e);
+
+    document.getElementById('last-sync').textContent =
+      'Erro ao sincronizar';
+  }
+}
+
+async function save(){
+
+  if(firebaseEnabled){
+    await set(ref(db, 'torneio'), {
+      players,
+      games,
+      nextId,
+      updatedAt: Date.now()
+    });
+  }else{
+    localStorage.setItem('players', JSON.stringify(players));
+    localStorage.setItem('games', JSON.stringify(games));
+    localStorage.setItem('nextId', String(nextId));
+  }
+}
+
+function enableRealtimeSync(){
+  onValue(ref(db, 'torneio'), (snapshot)=>{
+    const data = snapshot.val();
+
+    if(!data) return;
+
+    players = data.players || [];
+    games = data.games || [];
+    nextId = data.nextId || 1;
+
+    renderAll();
+
+    document.getElementById('last-sync').textContent =
+      'Atualizado em tempo real: ' +
+      new Date().toLocaleTimeString('pt-BR');
+  });
+}
+
+async function syncAll(){
+  if(syncing) return;
+
+  syncing = true;
+
+  document.getElementById('last-sync').textContent =
+    'Atualizando dados...';
+
+  await load();
+
+  syncing = false;
+}
+
+function calcRanking(){
+  const stats={};
+
+  players.forEach(p=>{
+    stats[p]={j:0,v:0,e:0,d:0,gp:0,gc:0,pts:0};
+  });
+
+  games.forEach(g=>{
+    if(!g.played)return;
+
+    const h=stats[g.home];
+    const a=stats[g.away];
+
+    if(!h || !a)return;
+
+    h.j++;
+    a.j++;
+
+    h.gp+=g.hg;
+    h.gc+=g.ag;
+
+    a.gp+=g.ag;
+    a.gc+=g.hg;
+
+    if(g.hg>g.ag){
+      h.v++;
+      h.pts+=3;
+      a.d++;
+    }else if(g.hg<g.ag){
+      a.v++;
+      a.pts+=3;
+      h.d++;
+    }else{
+      h.e++;
+      a.e++;
+      h.pts++;
+      a.pts++;
+    }
+  });
+
+  return players.map(p=>({
+    name:p,
+    ...stats[p],
+    sg:stats[p].gp-stats[p].gc
+  }))
+  .sort((a,b)=>
+    b.pts-a.pts ||
+    b.sg-a.sg ||
+    b.gp-a.gp ||
+    a.name.localeCompare(b.name)
+  );
+}
+
+function renderAll(){
+  renderRanking();
+
+  const active=document.querySelector('.section.active');
+
+  if(active){
+    const id=active.id;
+
+    if(id==='tab-jogos')renderJogos();
+    else if(id==='tab-resultado')renderResultado();
+    else if(id==='tab-jogadores')renderPlayers();
+  }
+}
+
+function renderRanking(){
+  const r=calcRanking();
+  const played=games.filter(g=>g.played);
+  const goals=played.reduce((s,g)=>s+g.hg+g.ag,0);
+
+  document.getElementById('m-players').textContent=players.length;
+  document.getElementById('m-games').textContent=games.length;
+  document.getElementById('m-done').textContent=played.length;
+  document.getElementById('m-goals').textContent=goals;
+
+  const pos=['🥇','🥈','🥉'];
+
+  document.getElementById('ranking-body').innerHTML =
+    r.map((p,i)=>{
+      const sg=p.sg;
+      const sgCls=sg>0?'sg-pos':sg<0?'sg-neg':'sg-zero';
+      const sgTxt=(sg>0?'+':'')+sg;
+
+      return `
+      <tr>
+        <td class="pos-cell ${i<3?'p'+(i+1):''}">
+          ${i<3?pos[i]:i+1}
+        </td>
+        <td>${p.name}</td>
+        <td>${p.j}</td>
+        <td>${p.v}</td>
+        <td>${p.e}</td>
+        <td>${p.d}</td>
+        <td>${p.gp}</td>
+        <td>${p.gc}</td>
+        <td class="${sgCls}">${sgTxt}</td>
+        <td class="pts-cell">${p.pts}</td>
+      </tr>`;
+    }).join('');
+}
+
+function populateSels(){
+  ['jogo-home','jogo-away'].forEach(id=>{
+    const el=document.getElementById(id);
+    const prev=el.value;
+
+    el.innerHTML=players.map(p=>
+      `<option value="${p}">${p}</option>`
+    ).join('');
+
+    if(players.includes(prev))el.value=prev;
+  });
+}
+
+function renderJogos(){
+  populateSels();
+
+  const list=document.getElementById('games-list');
+
+  if(!games.length){
+    list.innerHTML =
+      '<div class="empty">Nenhuma partida cadastrada.</div>';
+    return;
+  }
+
+  list.innerHTML=games.map(g=>`
+    <div class="game-card">
+      <div class="game-teams">
+        <span class="team">${g.home}</span>
+        <span class="${g.played?'score':'score pending'}">
+          ${g.played?g.hg+' × '+g.ag:'vs'}
+        </span>
+        <span class="team away">${g.away}</span>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+        <span class="game-date">${g.date||''}</span>
+
+        <span class="badge ${g.played?'badge-done':'badge-pend'}">
+          ${g.played?'Realizada':'Pendente'}
+        </span>
+
+        <button class="btn btn-danger"
+          onclick="removeGame(${g.id})">
+          ✕
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+window.addGame = async function(){
+  document.getElementById('jogo-err').textContent='';
+
+  const h=document.getElementById('jogo-home').value;
+  const a=document.getElementById('jogo-away').value;
+  const d=document.getElementById('jogo-data').value.trim();
+
+  if(h===a){
+    document.getElementById('jogo-err').textContent =
+      'Os dois jogadores devem ser diferentes.';
+    return;
+  }
+
+  games.push({
+    id:nextId++,
+    home:h,
+    away:a,
+    date:d,
+    played:false,
+    hg:0,
+    ag:0
+  });
+
+  await save();
+};
+
+window.removeGame = async function(id){
+  games = games.filter(g=>g.id!==id);
+
+  await save();
+};
+
+function renderResultado(){
+  const sel=document.getElementById('sel-game');
+
+  sel.innerHTML =
+    '<option value="">-- Selecione uma partida --</option>' +
+    games.map(g=>`
+      <option value="${g.id}">
+        ${g.home} vs ${g.away}
+        ${g.date?' ('+g.date+')':''}
+        ${g.played?' ✓':''}
+      </option>
+    `).join('');
+
+  renderHistorico();
+}
+
+window.selectGame = function(){
+  const id=parseInt(document.getElementById('sel-game').value);
+
+  const card=document.getElementById('score-card');
+
+  if(!id){
+    card.style.display='none';
+    return;
+  }
+
+  const g=games.find(x=>x.id===id);
+
+  if(!g){
+    card.style.display='none';
+    return;
+  }
+
+  card.style.display='block';
+
+  document.getElementById('score-title').textContent =
+    g.home+' × '+g.away+(g.date?' — '+g.date:'');
+
+  document.getElementById('rt-home').textContent=g.home;
+  document.getElementById('rt-away').textContent=g.away;
+
+  document.getElementById('sc-home').value=g.played?g.hg:0;
+  document.getElementById('sc-away').value=g.played?g.ag:0;
+
+  document.getElementById('res-msg').textContent='';
+  document.getElementById('res-msg').className='';
+}
+
+window.saveResult = async function(){
+  const id=parseInt(document.getElementById('sel-game').value);
+
+  const g=games.find(x=>x.id===id);
+
+  if(!g)return;
+
+  g.hg=Math.max(
+    0,
+    parseInt(document.getElementById('sc-home').value)||0
+  );
+
+  g.ag=Math.max(
+    0,
+    parseInt(document.getElementById('sc-away').value)||0
+  );
+
+  g.played=true;
+
+  await save();
+
+  const msg=document.getElementById('res-msg');
+
+  msg.className='ok';
+
+  msg.textContent =
+    '✓ Resultado salvo e sincronizado para todos os celulares.';
+}
+
+function renderHistorico(){
+  const hist=document.getElementById('hist-list');
+
+  const played=games.filter(g=>g.played);
+
+  if(!played.length){
+    hist.innerHTML =
+      '<div class="empty">Nenhum resultado lançado ainda.</div>';
+    return;
+  }
+
+  hist.innerHTML=played.slice().reverse().map(g=>{
+    const hw=g.hg>g.ag;
+    const aw=g.ag>g.hg;
+    const draw=g.hg===g.ag;
+
+    return `
+      <div class="hist-item">
+        <div class="hist-teams">
+          <span class="ht">
+            ${g.home}
+            <span class="rb ${hw?'rb-v':draw?'rb-e':'rb-d'}">
+              ${hw?'V':draw?'E':'D'}
+            </span>
+          </span>
+
+          <span class="hs">${g.hg} × ${g.ag}</span>
+
+          <span class="ht right">
+            <span class="rb ${aw?'rb-v':draw?'rb-e':'rb-d'}">
+              ${aw?'V':draw?'E':'D'}
+            </span>
+            ${g.away}
+          </span>
+        </div>
+
+        <span style="font-size:11px;color:var(--muted)">
+          ${g.date||''}
+        </span>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderPlayers(){
+  const list=document.getElementById('players-list');
+
+  list.innerHTML=players.map((p,i)=>`
+    <div class="player-row">
+      <span style="font-weight:600;font-size:14px">${p}</span>
+
+      <button class="btn btn-danger"
+        onclick="removePlayer(${i})">
+        ✕ Remover
+      </button>
+    </div>
+  `).join('');
+}
+
+window.addPlayer = async function(){
+  document.getElementById('player-err').textContent='';
+
+  const nome=document.getElementById('novo-nome').value.trim();
+
+  if(!nome){
+    document.getElementById('player-err').textContent =
+      'Digite um nome.';
+    return;
+  }
+
+  if(players.map(p=>p.toLowerCase())
+    .includes(nome.toLowerCase())){
+
+    document.getElementById('player-err').textContent =
+      'Jogador já cadastrado.';
+    return;
+  }
+
+  players.push(nome);
+
+  document.getElementById('novo-nome').value='';
+
+  await save();
+};
+
+window.removePlayer = async function(i){
+  const name=players[i];
+
+  if(games.some(g=>
+    (g.home===name||g.away===name)&&g.played
+  )){
+    document.getElementById('player-err').textContent =
+      'Não é possível remover: jogador tem resultados lançados.';
+    return;
+  }
+
+  players.splice(i,1);
+
+  games=games.filter(g=>
+    g.home!==name&&g.away!==name
+  );
+
+  await save();
+};
+
+window.showTab = function(t){
+  document.querySelectorAll('.section')
+    .forEach(s=>s.classList.remove('active'));
+
+  document.querySelectorAll('.tab')
+    .forEach(s=>s.classList.remove('active'));
+
+  document.getElementById('tab-'+t)
+    .classList.add('active');
+
+  const idx=['ranking','jogos','resultado','jogadores']
+    .indexOf(t);
+
+  document.querySelectorAll('.tab')[idx]
+    .classList.add('active');
+
+  if(t==='ranking')renderRanking();
+  if(t==='jogos')renderJogos();
+  if(t==='resultado')renderResultado();
+  if(t==='jogadores')renderPlayers();
+};
+
+
+if(firebaseEnabled){
+  enableRealtimeSync();
+}
+
+load();
+</script>
+
+</body>
+</html>
