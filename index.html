@@ -531,9 +531,7 @@ function renderAndamento(){
       botoesHtml='';
     } else if(g.encerrado){
       // Jogo encerrado — inserir placar
-      botoesHtml=`
-        <button class="btn-placar" onclick="abrirPlacarComPin(${g.id})">🎾 Inserir Placar</button>
-        <button class="btn-placar" style="background:transparent;border:2px solid var(--gold);color:var(--gold);margin-top:6px;font-size:12px" onclick="abrirScoreModal(${g.id})">🔓 Inserir sem PIN (teste)</button>`;
+      botoesHtml=`<button class="btn-placar" onclick="abrirPlacarComPin(${g.id})">🎾 Inserir Placar</button>`;
     } else if(g.iniciado){
       // Jogo em andamento — aguardando encerrar
       botoesHtml=`<button class="btn-placar" style="background:#e05252;color:#fff" onclick="encerrarJogo(${g.id})">🏁 Partida Finalizada — Inserir Resultado</button>`;
@@ -715,21 +713,35 @@ function abrirPin(jogadores,desc,modoAdmin,callback){
 window.fecharPin=function(){document.getElementById('pin-modal').classList.remove('open');document.getElementById('pin-sel-wrap').style.display='';_pinCallback=null;window._alterandoPin=null;};
 window.confirmarPin=function(){
   const pinDigitado=document.getElementById('pin-input').value.trim();
+
+  // Alterar PIN de jogador
   if(window._alterandoPin){
     if(!pinDigitado||pinDigitado.length<4){document.getElementById('pin-err').textContent='Digite 4 dígitos.';return;}
     pins[window._alterandoPin]=pinDigitado;save().then(()=>{renderPlayers();fecharPin();});return;
   }
+
+  // Modo admin
   if(window._modoAdmin){
     if(!adminPin){document.getElementById('pin-err').textContent='PIN admin não configurado. Vá em ➕ Marcar → Área Admin.';return;}
     if(String(pinDigitado)!==String(adminPin)){document.getElementById('pin-err').textContent='PIN admin incorreto.';document.getElementById('pin-input').value='';document.getElementById('pin-input').focus();return;}
     fecharPin();if(_pinCallback)_pinCallback();return;
   }
+
+  // Modo jogadores — busca case-insensitive
   const jogador=document.getElementById('pin-sel').value;
-  // Busca PIN ignorando maiúsculas/minúsculas
-  const chave=Object.keys(pins).find(k=>k.toLowerCase()===jogador.toLowerCase());
-  const pinCorreto=chave?pins[chave]:null;
-  if(!pinCorreto){const outro=_pinJogs.find(j=>j!==jogador&&Object.keys(pins).find(k=>k.toLowerCase()===j.toLowerCase()));if(outro)document.getElementById('pin-err').textContent=jogador+' não tem PIN. Selecione '+outro+'.';else document.getElementById('pin-err').textContent='Nenhum jogador tem PIN. Vá em 👥 Jogadores.';return;}
-  if(String(pinDigitado)!==String(pinCorreto)){document.getElementById('pin-err').textContent='PIN incorreto. Tente novamente.';document.getElementById('pin-input').value='';document.getElementById('pin-input').focus();return;}
+  const chavePin=Object.keys(pins).find(k=>k.toLowerCase()===jogador.toLowerCase());
+  const pinCorreto=chavePin?pins[chavePin]:null;
+
+  if(!pinCorreto){
+    const outro=_pinJogs.find(j=>j!==jogador&&Object.keys(pins).find(k=>k.toLowerCase()===j.toLowerCase()));
+    if(outro)document.getElementById('pin-err').textContent=jogador+' não tem PIN. Selecione '+outro+'.';
+    else document.getElementById('pin-err').textContent='Nenhum jogador tem PIN. Vá em 👥 Jogadores.';
+    return;
+  }
+  if(String(pinDigitado)!==String(pinCorreto)){
+    document.getElementById('pin-err').textContent='PIN incorreto. Tente novamente.';
+    document.getElementById('pin-input').value='';document.getElementById('pin-input').focus();return;
+  }
   fecharPin();if(_pinCallback)_pinCallback();
 };
 
