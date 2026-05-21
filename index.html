@@ -492,9 +492,12 @@ function renderAndamento(){
     if(!comecou){
       // Ainda não chegou a hora
       botoesHtml='';
-    } else if(g.iniciado){
-      // Jogo já foi iniciado — pode inserir placar
+    } else if(g.encerrado){
+      // Jogo encerrado — inserir placar
       botoesHtml=`<button class="btn-placar" onclick="abrirPlacarComPin(${g.id})">🎾 Inserir Placar</button>`;
+    } else if(g.iniciado){
+      // Jogo em andamento — aguardando encerrar
+      botoesHtml=`<button class="btn-placar" style="background:#e05252;color:#fff" onclick="encerrarJogo(${g.id})">⏹️ Jogo Encerrado</button>`;
     } else if(woAuto){
       // Passou 15 min sem iniciar e desafio foi aceito — W.O. automático para o away
       botoesHtml=`
@@ -522,7 +525,7 @@ function renderAndamento(){
         <div class="game-meta">
           <span class="badge badge-tipo">${tipoLabel(g.tipo||'simples')}</span>
           ${g.date?`<span class="badge badge-hora">📅 ${g.date}${g.hora?' '+g.hora:''}</span>`:''}
-          ${g.iniciado?'<span class="badge badge-done">🎾 Em jogo</span>':g.status==='aceito'?'<span class="badge badge-acei">✅ Aceito</span>':g.status==='recusado'?'<span class="badge badge-wo">❌ Recusado</span>':'<span class="badge badge-pend">Pendente</span>'}
+          ${g.encerrado?'<span class="badge" style="background:#2a1f00;color:var(--gold)">⏹️ Encerrado</span>':g.iniciado?'<span class="badge badge-done">🎾 Em jogo</span>':g.status==='aceito'?'<span class="badge badge-acei">✅ Aceito</span>':g.status==='recusado'?'<span class="badge badge-wo">❌ Recusado</span>':'<span class="badge badge-pend">Pendente</span>'}
         </div>
       </div>
       ${mins!==null&&mins>0&&mins<=60?`<div class="countdown">⏱️ Começa em ${mins} minuto${mins>1?'s':''}</div>`:''}
@@ -553,7 +556,12 @@ window.lembreteById=function(id){const g=games.find(x=>x.id===id);if(g)enviarLem
 window.removeGame=async function(id){games=games.filter(g=>g.id!==id);await save();};
 window.iniciarJogo=async function(id){
   const g=games.find(x=>x.id===id);if(!g)return;
-  g.iniciado=true;await save();
+  g.iniciado=true;g.encerrado=false;await save();
+};
+
+window.encerrarJogo=async function(id){
+  const g=games.find(x=>x.id===id);if(!g)return;
+  g.encerrado=true;await save();
 };
 
 window.registrarWOAuto=async function(id){
