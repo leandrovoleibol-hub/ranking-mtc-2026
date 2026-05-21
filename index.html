@@ -348,12 +348,11 @@ window.salvarPinAdmin=async function(){
 
 // HORA - se não tem horário definido, considera que pode inserir placar sempre
 function horaJogo(g){if(!g.date||!g.hora)return null;try{const[d,m]=g.date.split('/');const[h,min]=g.hora.split(':');return new Date(new Date().getFullYear(),parseInt(m)-1,parseInt(d),parseInt(h),parseInt(min));}catch(e){return null;}}
-function jogoComecou(g){
-  const t=horaJogo(g);
-  if(!t) return true; // sem horário definido, libera sempre
-  return new Date()>=t;
-}
+function jogoComecou(g){const t=horaJogo(g);if(!t)return true;return new Date()>=t;}
 function minutosAteJogo(g){const t=horaJogo(g);if(!t)return null;return Math.round((t-new Date())/60000);}
+function minutosAposInicio(g){const t=horaJogo(g);if(!t)return null;return Math.round((new Date()-t)/60000);}
+function dentroJanela15min(g){const m=minutosAposInicio(g);return m!==null&&m>=0&&m<=15;}
+function woAutomatico(g){const m=minutosAposInicio(g);return m!==null&&m>15&&!g.iniciado&&g.status==='aceito';}
 
 // TELA DE DESAFIO VIA LINK
 function verificarDesafioURL(){
@@ -480,26 +479,57 @@ function renderAndamento(){
   const jogos=games.filter(g=>!g.played&&!g.wo);
   if(!jogos.length){list.innerHTML='<div class="empty">Nenhum jogo agendado ou em andamento.</div>';return;}
   list.innerHTML=jogos.map(g=>{
-    const comecou=jogoComecou(g),mins=minutosAteJogo(g);
-    const temWpp=fones[g.away],temLembrete=(fones[g.home]||fones[g.away])&&g.status==='aceito';
+    const comecou=jogoComecou(g);
+    const mins=minutosAteJogo(g);
+    const mApos=minutosAposInicio(g);
+    const naJanela=dentroJanela15min(g);
+    const woAuto=woAutomatico(g);
+    const temWpp=fones[g.away];
+    const temLembrete=(fones[g.home]||fones[g.away])&&g.status==='aceito';
+
+    let botoesHtml='';
+
+    if(!comecou){
+      // Ainda não chegou a hora
+      botoesHtml='';
+    } else if(g.iniciado){
+      // Jogo já foi iniciado — pode inserir placar
+      botoesHtml=`<button class="btn-placar" onclick="abrirPlacarComPin(${g.id})">🎾 Inserir Placar</button>`;
+    } else if(woAuto){
+      // Passou 15 min sem iniciar e desafio foi aceito — W.O. automático para o away
+      botoesHtml=`
+        <div style="background:#3d1a1a;border:1px solid #e05252;border-radius:8px;padding:12px;text-align:center;margin-bottom:8px">
+          <div style="color:#e05252;font-weight:700;font-size:14px;margin-bottom:4px">⚠️ W.O. Automático</div>
+          <div style="color:var(--muted);font-size:12px">${g.away} não iniciou o jogo em 15 minutos após o horário marcado.</div>
+        </div>
+        <button class="btn-placar" style="background:#e05252" onclick="registrarWOAuto(${g.id})">Registrar W.O. — ${g.home} ganha</button>`;
+    } else if(naJanela){
+      // Dentro da janela de 15 min — botão para iniciar
+      botoesHtml=`
+        <div class="countdown" style="color:var(--gold)">⏱️ ${15-(mApos||0)} min restantes para iniciar ou W.O.</div>
+        <button class="btn-placar" onclick="iniciarJogo(${g.id})">▶️ Jogo Iniciado — Começamos!</button>
+        <button class="btn-placar" style="background:#3ecf6e;margin-top:6px" onclick="abrirPlacarComPin(${g.id})">🎾 Inserir Placar Agora</button>`;
+    } else if(comecou){
+      // Chegou a hora mas sem horário definido ou sem aceite
+      botoesHtml=`
+        <button class="btn-placar" onclick="iniciarJogo(${g.id})">▶️ Jogo Iniciado — Começamos!</button>
+        <button class="btn-placar" style="background:transparent;border:2px solid var(--accent);color:var(--accent);margin-top:6px" onclick="abrirPlacarComPin(${g.id})">🎾 Inserir Placar</button>`;
+    }
+
     return`<div class="game-card" style="${comecou?'border:2px solid var(--accent)':''}">
       <div class="game-top">
         <div class="game-teams"><span class="team">${g.home}</span><span class="score pending">vs</span><span class="team" style="text-align:right">${g.away}</span></div>
         <div class="game-meta">
           <span class="badge badge-tipo">${tipoLabel(g.tipo||'simples')}</span>
           ${g.date?`<span class="badge badge-hora">📅 ${g.date}${g.hora?' '+g.hora:''}</span>`:''}
-          ${g.status==='aceito'?'<span class="badge badge-acei">✅ Aceito</span>':g.status==='recusado'?'<span class="badge badge-wo">❌ Recusado</span>':'<span class="badge badge-pend">Pendente</span>'}
+          ${g.iniciado?'<span class="badge badge-done">🎾 Em jogo</span>':g.status==='aceito'?'<span class="badge badge-acei">✅ Aceito</span>':g.status==='recusado'?'<span class="badge badge-wo">❌ Recusado</span>':'<span class="badge badge-pend">Pendente</span>'}
         </div>
       </div>
       ${mins!==null&&mins>0&&mins<=60?`<div class="countdown">⏱️ Começa em ${mins} minuto${mins>1?'s':''}</div>`:''}
-      ${comecou?`<button class="btn-placar" onclick="abrirPlacarComPin(${g.id})">🎾 Inserir Placar</button>`:''}
-      ${g.status==='aceito'&&comecou?`<div style="display:flex;gap:5px;margin-top:8px;flex-wrap:wrap">
-        <button class="btn btn-wo btn-sm" onclick="registrarWO(${g.id},false)">⚠️ W.O. — ${g.away} não veio</button>
-        <button class="btn btn-wo btn-sm" onclick="registrarWO(${g.id},true)">⚠️ W.O. — ${g.home} não veio</button>
-      </div>`:''}
+      ${botoesHtml}
       <div class="game-actions">
         ${temWpp&&!g.status?`<button class="btn btn-wpp btn-sm" onclick="enviarDesafioWppById(${g.id})">📱 Desafiar</button>`:''}
-        ${temLembrete?`<button class="btn btn-lembrete btn-sm" onclick="lembreteById(${g.id})">⏰ Lembrete</button>`:''}
+        ${temLembrete&&!g.iniciado?`<button class="btn btn-lembrete btn-sm" onclick="lembreteById(${g.id})">⏰ Lembrete</button>`:''}
         <button class="btn btn-danger btn-sm" onclick="removeGame(${g.id})">✕ Excluir</button>
       </div>
     </div>`;
@@ -521,6 +551,18 @@ function renderFinalizados(){
 window.enviarDesafioWppById=function(id){const g=games.find(x=>x.id===id);if(g)enviarDesafioWpp(g);};
 window.lembreteById=function(id){const g=games.find(x=>x.id===id);if(g)enviarLembrete(g);};
 window.removeGame=async function(id){games=games.filter(g=>g.id!==id);await save();};
+window.iniciarJogo=async function(id){
+  const g=games.find(x=>x.id===id);if(!g)return;
+  g.iniciado=true;await save();
+};
+
+window.registrarWOAuto=async function(id){
+  const g=games.find(x=>x.id===id);if(!g)return;
+  // W.O. automático: quem recebeu o desafio (away) não veio
+  g.wo=true;g.played=false;g.woWinner=g.home;
+  await save();
+};
+
 window.registrarWO=async function(id,homeNaoFoi){
   const g=games.find(x=>x.id===id);if(!g)return;
   const quemNaoFoi=homeNaoFoi?g.home:g.away,quemFoi=homeNaoFoi?g.away:g.home;
