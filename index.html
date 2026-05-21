@@ -581,9 +581,15 @@ window.registrarWO=async function(id,homeNaoFoi){
 // PLACAR
 window.abrirPlacarComPin=function(id){
   const g=games.find(x=>x.id===id);if(!g)return;
-  const algumTemPin=[g.home,g.away].some(j=>pins[j]);
+  // Busca PIN ignorando maiúsculas/minúsculas
+  function getPin(nome){
+    const chave=Object.keys(pins).find(k=>k.toLowerCase()===nome.toLowerCase());
+    return chave?pins[chave]:null;
+  }
+  const algumTemPin=[g.home,g.away].some(j=>getPin(j));
   if(!algumTemPin){abrirScoreModal(id);return;}
-  abrirPin([g.home,g.away],'Inserir placar: '+g.home+' vs '+g.away,false,()=>abrirScoreModal(id));
+  // Passa os jogadores com o nome exato como está no pins
+  abrirPin([g.home,g.away],'Inserir placar: '+g.home+' vs '+g.away,false,()=>abrirScoreModal(id),getPin);
 };
 window.editarAdmin=function(id){
   if(!adminPin){alert('PIN admin não configurado. Vá em ➕ Marcar → Área Admin.');return;}
@@ -684,8 +690,11 @@ window.confirmarPin=function(){
     if(String(pinDigitado)!==String(adminPin)){document.getElementById('pin-err').textContent='PIN admin incorreto.';document.getElementById('pin-input').value='';document.getElementById('pin-input').focus();return;}
     fecharPin();if(_pinCallback)_pinCallback();return;
   }
-  const jogador=document.getElementById('pin-sel').value,pinCorreto=pins[jogador];
-  if(!pinCorreto){const outro=_pinJogs.find(j=>j!==jogador&&pins[j]);if(outro)document.getElementById('pin-err').textContent=jogador+' não tem PIN. Selecione '+outro+'.';else document.getElementById('pin-err').textContent='Nenhum jogador tem PIN. Vá em 👥 Jogadores.';return;}
+  const jogador=document.getElementById('pin-sel').value;
+  // Busca PIN ignorando maiúsculas/minúsculas
+  const chave=Object.keys(pins).find(k=>k.toLowerCase()===jogador.toLowerCase());
+  const pinCorreto=chave?pins[chave]:null;
+  if(!pinCorreto){const outro=_pinJogs.find(j=>j!==jogador&&Object.keys(pins).find(k=>k.toLowerCase()===j.toLowerCase()));if(outro)document.getElementById('pin-err').textContent=jogador+' não tem PIN. Selecione '+outro+'.';else document.getElementById('pin-err').textContent='Nenhum jogador tem PIN. Vá em 👥 Jogadores.';return;}
   if(String(pinDigitado)!==String(pinCorreto)){document.getElementById('pin-err').textContent='PIN incorreto. Tente novamente.';document.getElementById('pin-input').value='';document.getElementById('pin-input').focus();return;}
   fecharPin();if(_pinCallback)_pinCallback();
 };
