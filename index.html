@@ -347,8 +347,45 @@ window.salvarPinAdmin=async function(){
 };
 
 // HORA - se não tem horário definido, considera que pode inserir placar sempre
-function horaJogo(g){if(!g.date||!g.hora)return null;try{const[d,m]=g.date.split('/');const[h,min]=g.hora.split(':');return new Date(new Date().getFullYear(),parseInt(m)-1,parseInt(d),parseInt(h),parseInt(min));}catch(e){return null;}}
-function jogoComecou(g){const t=horaJogo(g);if(!t)return true;return new Date()>=t;}
+function horaJogo(g){
+  if(!g.date&&!g.hora) return null;
+  try{
+    const ano=new Date().getFullYear();
+    let dia,mes,h=0,min=0;
+    // Data: aceita dd/mm, dd/mm/yyyy, dd/mm/aaaa
+    if(g.date){
+      const partes=g.date.split('/');
+      dia=parseInt(partes[0]);
+      mes=parseInt(partes[1])-1;
+      // Se tem ano na data, usa ele
+      if(partes[2]) {
+        const anoData=parseInt(partes[2]);
+        return g.hora ? (() => {
+          const hp=g.hora.split(':');
+          h=parseInt(hp[0]);min=parseInt(hp[1]||0);
+          return new Date(anoData,mes,dia,h,min);
+        })() : new Date(anoData,mes,dia,23,59);
+      }
+    } else {
+      dia=new Date().getDate();
+      mes=new Date().getMonth();
+    }
+    // Hora: aceita H:MM, HH:MM, H:M
+    if(g.hora){
+      const hp=g.hora.split(':');
+      h=parseInt(hp[0])||0;
+      min=parseInt(hp[1])||0;
+    }
+    return new Date(ano,mes,dia,h,min);
+  }catch(e){return null;}
+}
+function jogoComecou(g){
+  // Sem data E sem hora = libera sempre
+  if(!g.date&&!g.hora) return true;
+  const t=horaJogo(g);
+  if(!t) return true;
+  return new Date()>=t;
+}
 function minutosAteJogo(g){const t=horaJogo(g);if(!t)return null;return Math.round((t-new Date())/60000);}
 function minutosAposInicio(g){const t=horaJogo(g);if(!t)return null;return Math.round((new Date()-t)/60000);}
 function dentroJanela15min(g){const m=minutosAposInicio(g);return m!==null&&m>=0&&m<=15;}
@@ -497,7 +534,7 @@ function renderAndamento(){
       botoesHtml=`<button class="btn-placar" onclick="abrirPlacarComPin(${g.id})">🎾 Inserir Placar</button>`;
     } else if(g.iniciado){
       // Jogo em andamento — aguardando encerrar
-      botoesHtml=`<button class="btn-placar" style="background:#e05252;color:#fff" onclick="encerrarJogo(${g.id})">⏹️ Jogo Encerrado</button>`;
+      botoesHtml=`<button class="btn-placar" style="background:#e05252;color:#fff" onclick="encerrarJogo(${g.id})">🏁 Partida Finalizada — Inserir Resultado</button>`;
     } else if(woAuto){
       // Passou 15 min sem iniciar e desafio foi aceito — W.O. automático para o away
       botoesHtml=`
@@ -581,15 +618,10 @@ window.registrarWO=async function(id,homeNaoFoi){
 // PLACAR
 window.abrirPlacarComPin=function(id){
   const g=games.find(x=>x.id===id);if(!g)return;
-  // Busca PIN ignorando maiúsculas/minúsculas
-  function getPin(nome){
-    const chave=Object.keys(pins).find(k=>k.toLowerCase()===nome.toLowerCase());
-    return chave?pins[chave]:null;
-  }
+  function getPin(nome){const chave=Object.keys(pins).find(k=>k.toLowerCase()===nome.toLowerCase());return chave?pins[chave]:null;}
   const algumTemPin=[g.home,g.away].some(j=>getPin(j));
   if(!algumTemPin){abrirScoreModal(id);return;}
-  // Passa os jogadores com o nome exato como está no pins
-  abrirPin([g.home,g.away],'Inserir placar: '+g.home+' vs '+g.away,false,()=>abrirScoreModal(id),getPin);
+  abrirPin([g.home,g.away],'Inserir placar: '+g.home+' vs '+g.away,false,()=>abrirScoreModal(id));
 };
 window.editarAdmin=function(id){
   if(!adminPin){alert('PIN admin não configurado. Vá em ➕ Marcar → Área Admin.');return;}
