@@ -618,14 +618,31 @@ window.registrarWO=async function(id,homeNaoFoi){
 // PLACAR
 window.abrirPlacarComPin=function(id){
   const g=games.find(x=>x.id===id);if(!g)return;
-  function getPin(nome){const chave=Object.keys(pins).find(k=>k.toLowerCase()===nome.toLowerCase());return chave?pins[chave]:null;}
-  const algumTemPin=[g.home,g.away].some(j=>getPin(j));
-  if(!algumTemPin){abrirScoreModal(id);return;}
-  abrirPin([g.home,g.away],'Inserir placar: '+g.home+' vs '+g.away,false,()=>abrirScoreModal(id));
+  function getPin(n){const k=Object.keys(pins).find(k=>k.toLowerCase()===n.toLowerCase());return k?pins[k]:null;}
+  const temPin=[g.home,g.away].some(j=>getPin(j));
+  if(!temPin){window.abrirScoreModal(id);return;}
+  _pinJogs=[g.home,g.away];window._alterandoPin=null;window._modoAdmin=false;
+  window._pinCallback=function(){window.abrirScoreModal(id);};
+  document.getElementById("pin-title").textContent="🔒 Confirmar Identidade";
+  document.getElementById("pin-desc").textContent="Inserir placar: "+g.home+" vs "+g.away;
+  document.getElementById("pin-err").textContent="";
+  document.getElementById("pin-input").value="";
+  document.getElementById("pin-sel-wrap").style.display="";
+  document.getElementById("pin-sel").innerHTML=[g.home,g.away].map(j=>"<option value=\""+j+"\">"+j+"</option>").join("");
+  document.getElementById("pin-modal").classList.add("open");
+  setTimeout(()=>document.getElementById("pin-input").focus(),150);
 };
 window.editarAdmin=function(id){
-  if(!adminPin){alert('PIN admin não configurado. Vá em ➕ Marcar → Área Admin.');return;}
-  abrirPin([],'PIN de administrador para editar placar:',true,()=>abrirScoreModal(id));
+  if(!adminPin){alert("PIN admin não configurado.");return;}
+  window._alterandoPin=null;window._modoAdmin=true;
+  window._pinCallback=function(){window.abrirScoreModal(id);};
+  document.getElementById("pin-title").textContent="👑 PIN Administrador";
+  document.getElementById("pin-desc").textContent="PIN de administrador:";
+  document.getElementById("pin-err").textContent="";
+  document.getElementById("pin-input").value="";
+  document.getElementById("pin-sel-wrap").style.display="none";
+  document.getElementById("pin-modal").classList.add("open");
+  setTimeout(()=>document.getElementById("pin-input").focus(),150);
 };
 
 let _scoreId=null;
